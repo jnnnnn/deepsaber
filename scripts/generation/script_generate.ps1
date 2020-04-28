@@ -1,8 +1,9 @@
 param (
-  [Parameter(Mandatory=$true)][string]$song_path
+  [string]$song_path = "C:\users\j\Downloads\mountain.wav",
+  [string]$type = "deepsaber",
+  [string]$peak_threshold = "0.33"
 )
-
-$type="deepsaber"
+#[Parameter(Mandatory=$true)]
 
 # exp1=block_placement_new_nohumreg
 # cpt1=1220000
@@ -39,7 +40,7 @@ if ( "$type" -eq "ddc" ) {
     --ddc_diff 3
 
   $basename=$song_path.split('\.')[-2]
-  $json_file="generated\${basename}_${exp1}_${cpt1}_0.33_1.0.dat"
+  $json_file="generated\${basename}_${exp1}_${cpt1}_${peak_threshold}_1.0.dat"
   python generate_stage2.py --song_path $song_path --json_file $json_file --experiment_name $exp2 --checkpoint $cpt2 --bpm 128 --temperature 1.00 `
     --use_beam_search `
     --open_in_browser `
@@ -48,14 +49,13 @@ if ( "$type" -eq "ddc" ) {
 
 if ( $type -eq "deepsaber" ) {
   python generate_stage1.py --cuda --song_path $song_path --experiment_name $exp1 --checkpoint $cpt1 --bpm 128 `
-    --peak_threshold 0.33 `
+    --peak_threshold ${peak_threshold} `
     --temperature 1.0
   $basename=$song_path.split('\.')[-2]
-  $json_file="generated\${basename}_${exp1}_${cpt1}_0.33_1.0.dat"
+  $json_file="generated\${basename}_${exp1}_${cpt1}_${peak_threshold}_1.0.dat"
   python generate_stage2.py --cuda --song_path $song_path --json_file $json_file --experiment_name $exp2 --checkpoint $cpt2 --bpm 128 `
   --temperature 1.00 `
   --use_beam_search `
-  --open_in_browser `
   #--generate_full_song `
     
 
