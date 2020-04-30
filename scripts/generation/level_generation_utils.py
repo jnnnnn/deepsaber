@@ -95,11 +95,11 @@ def make_level_from_notes(
     difficulties, song_path, level_folder,  # difficulties: {str: [note]},
 ):
     song_name = Path(song_path).stem
-
+    parts = song_name.split("-", maxsplit=1)
     info_json = {
         "_version": "2.0.0",
-        "_songName": song_name,
-        "_songSubName": "",
+        "_songName": parts[1] if len(parts) > 1 else parts[0],
+        "_songSubName": parts[1] if len(parts) > 1 else "",
         "_songAuthorName": "DeepSaber",
         "_levelAuthorName": "DeepSaber",
         "_beatsPerMinute": 128,
@@ -128,14 +128,15 @@ def make_level_from_notes(
         with open(f"{level_folder}/{d}.dat", "w") as f:
             f.write(
                 json.dumps(
-                    f, {"_events": [], "_notes": difficulties[d], "_obstacles": [],},
+                    {"_events": [], "_notes": difficulties[d], "_obstacles": [],},
                 )
             )
 
     with open(level_folder + "/info.dat", "w") as f:
-        f.write(json.dumps(f, info_json))
+        f.write(json.dumps(info_json))
 
     # copyfile(logo_path, level_folder + "/cover.jpg")
+    print("Converting song to ogg...")
     subprocess.run(
         [
             "ffmpeg",
@@ -147,5 +148,7 @@ def make_level_from_notes(
             "-q:a",
             "4",
             level_folder + "/song.ogg",
+            "-loglevel",
+            "warning",
         ]
     )
