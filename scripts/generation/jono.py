@@ -1,3 +1,10 @@
+
+MYPATHS = dict(
+    InputMP3s = "c:/users/j/Downloads/songs/gen",
+    OutputBeatSaberLevels = "C:/Program Files (x86)/Steam/steamapps/common/Beat Saber/Beat Saber_Data/CustomLevels"
+)
+
+
 import sys, os, pathlib
 import json, pickle
 import time
@@ -6,7 +13,11 @@ import numpy as np
 from math import ceil
 from pathlib import Path
 from scipy import signal
+import logging
 import tqdm
+
+logging.basicConfig(format='%(asctime)-15s %(message)s')
+logger = logging.getLogger()
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.abspath(os.path.join(THIS_DIR, "..", ".."))
@@ -35,16 +46,13 @@ DEFAULT_NOTE = {
 
 
 def main():
-    input_folder = "c:/users/j/Downloads/songs/gen"
+    input_folder = MYPATHS.InputMP3s
     for song_file in tqdm.tqdm(os.listdir(input_folder)):
-        print(f"mapping {song_file}")
+        logger.info(f"\n\n\nmapping {song_file}")
         mapify(os.path.join(input_folder, song_file))
+        torch.cuda.empty_cache()  # avoid RuntimeError: CUDA out of memory after several songs
 
 
-from functools import lru_cache
-
-
-@lru_cache()
 def model1():
     opt = load_options("block_placement_ddc2", 130000)
     model = create_model(opt)
@@ -59,7 +67,6 @@ def model1():
     return opt, model
 
 
-@lru_cache()
 def model2():
     opt = load_options("block_selection_new2", 2150000)
     model = create_model(opt)
@@ -73,32 +80,32 @@ def mapify(
     temperature=1.00,
     peak_threshold=0.5,
     bpm=128,
-    output_folder="C:/Program Files (x86)/Steam/steamapps/common/Beat Saber/Beat Saber_Data/CustomLevels",
 ):
     opt, model = model1()
     hop, features = extract_features(song_path, opt)
 
     song = torch.tensor(features).unsqueeze(0)
 
-    level_folder = make_level_folder(song_path, output_folder, temperature)
+    level_folder = make_level_folder(song_path, MYPATHS.OutputBeatSaberLevels, temperature)
 
-    print("Generating level timings... (sorry I'm a bit slow)")
+    logger.info("Generating level timings... (sorry I'm a bit slow)")
     peak_probs = generate_peak_probs(opt, model, song, temperature, features)
     difficulties = {
-        "Easy": linspace_threshold(peak_probs, bpm, hop, opt, notes_per_sec=0.5),
-        "Normal": linspace_threshold(peak_probs, bpm, hop, opt, notes_per_sec=1.0),
+        "Easy": linspace_threshold(peak_probs, bpm, hop, opt, notes_per_sec=1.0),
+        "Normal": linspace_threshold(peak_probs, bpm, hop, opt, notes_per_sec=1.5),
         "Hard": linspace_threshold(peak_probs, bpm, hop, opt, notes_per_sec=2.0),
-        "Expert": linspace_threshold(peak_probs, bpm, hop, opt, notes_per_sec=3.0),
+        "Expert": linspace_threshold(peak_probs, bpm, hop, opt, notes_per_sec=2.5),
     }
     make_level_from_notes(difficulties, song_path, level_folder)
 
     # stage 2
     opt, model = model2()
-    unique_states = pickle.load(open("../../data/statespace/sorted_states.pkl", "rb"))
+    with open("../../data/statespace/sorted_states.pkl", "rb") as f:
+        unique_states = pickle.load(f)
     hop, features = extract_features(song_path, opt)
 
     for diffi, notes in difficulties.items():
-        print(f"Generating state sequence for {diffi}")
+        logger.info(f"Generating state sequence for {diffi}")
         state_times, generated_sequence = model.generate(
             features,
             os.path.join(level_folder, f"{diffi}.dat"),
@@ -138,7 +145,7 @@ def linspace_threshold(peak_probs, bpm, hop, opt, notes_per_sec=2):
             best_notes = notes
             best_difference = difference
             best = f"Threshold {peak_threshold:.5f} gave {nps:.1f} notes per second for a total of {len(notes)}"
-    print(best)
+    logger.info(best)
     return best_notes
 
 
@@ -159,7 +166,7 @@ def binary_search_threshold(
             nps = len(notes) / total_seconds
         else:
             nps = 0
-        print(f"Threshold {peak_threshold} gives {nps} notes per sec")
+        logger.info(f"Threshold {peak_threshold} gives {nps} notes per sec")
         if abs(max_threshold - min_threshold) < 0.000001:
             return []
         elif nps > notes_per_sec + allowable_error:
@@ -201,7 +208,7 @@ def load_options(experiment_name, checkpoint, cuda=True):
     # opt["using_bpm_time_division"] = True
     opt["continue_train"] = False
 
-    # AttrDict is a bit error-prone but I can't be bothered cleaning it up
+    # AttrDict is a bit ugly but I can't be bothered cleaning it up
     class AttrDict:
         def __init__(self, **entries):
             self.__dict__.update(entries)
