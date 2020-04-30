@@ -51,13 +51,13 @@ def extract_features(song_path, args, opt):
 
     return hop, features
 
-def make_level_from_notes(notes, bpm, song_name, args, upload_to_dropbox=False, open_in_browser=False, copy_to_root=False):
-    temperature = args.temperature
+def make_level_from_notes(notes, bpm, song_name, **kwargs, upload_to_dropbox=False, open_in_browser=False, copy_to_root=False):
+    temperature = kwargs.temperature
     try:
-        checkpoint = args.checkpoint
+        checkpoint = kwargs.checkpoint
     except:
         checkpoint = ""
-    song_path = args.song_path
+    song_path = kwargs.song_path
 
     if open_in_browser:
         assert upload_to_dropbox
@@ -80,7 +80,7 @@ def make_level_from_notes(notes, bpm, song_name, args, upload_to_dropbox=False, 
       "_shufflePeriod": 0.5,
       "_previewStartTime": 12,
       "_previewDuration": 10,
-      "_songFilename": "song.egg",
+      "_songFilename": "song.ogg",
       "_coverImageFilename": "cover.jpg",
       "_environmentName": "NiceEnvironment",
       "_customData": {
