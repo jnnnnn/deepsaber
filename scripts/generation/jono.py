@@ -46,7 +46,7 @@ DEFAULT_NOTE = {
 
 
 def main():
-    input_folder = MYPATHS.InputMP3s
+    input_folder = MYPATHS['InputMP3s']
     for song_file in tqdm.tqdm(os.listdir(input_folder)):
         logger.info(f"\n\n\nmapping {song_file}")
         mapify(os.path.join(input_folder, song_file))
@@ -86,7 +86,7 @@ def mapify(
 
     song = torch.tensor(features).unsqueeze(0)
 
-    level_folder = make_level_folder(song_path, MYPATHS.OutputBeatSaberLevels, temperature)
+    level_folder = make_level_folder(song_path, MYPATHS['OutputBeatSaberLevels'], temperature)
 
     logger.info("Generating level timings... (sorry I'm a bit slow)")
     peak_probs = generate_peak_probs(opt, model, song, temperature, features)
